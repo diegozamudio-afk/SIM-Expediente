@@ -37,46 +37,39 @@ with st.expander("➕ Cargar Nuevo Expediente"):
             except Exception as e:
                 st.error(f"Error técnico: {e}")
 
-# --- VISUALIZACIÓN Y SEMÁFORO AUTOMÁTICO ---
+# --- VISUALIZACIÓN Y SEMÁFORO ---
 try:
     hoja = obtener_hoja()
     data = hoja.get_all_records()
+    
     if data:
         df = pd.DataFrame(data)
         
-        # 1. Limpieza de fechas
-        df['Fecha_Expediente'] = pd.to_datetime(df['Fecha_Expediente'].astype(str).str.strip(), dayfirst=True, errors='coerce')
-        
-        mask = df['Fecha_Expediente'].isna()
-        if mask.any():
-            df.loc[mask, 'Fecha_Expediente'] = pd.to_datetime(df.loc[mask, 'Fecha_Expediente'].astype(str), errors='coerce')
-
-        # 2. Cálculo de días
+        # PASO 1: Calcular días usando una copia temporal para el cálculo
+        # Esto no cambia cómo se ve la fecha en la tabla, solo ayuda al semáforo
+        temp_date = pd.to_datetime(df['Fecha_Expediente'], dayfirst=True, errors='coerce')
         hoy = pd.Timestamp.now().normalize()
-        df['Dias_Demora'] = (hoy - df['Fecha_Expediente'].dt.normalize()).dt.days
+        df['Dias_Demora'] = (hoy - temp_date.dt.normalize()).dt.days
         
-        # 3. Lógica semáforo
+        # PASO 2: Lógica semáforo
         def get_semaforo(dias):
-            if pd.isna(dias): 
-                return '⚪'
-            if dias <= 0: 
-                return '⚪'
-            if dias <= 3: 
-                return '🟢'
-            elif dias <= 5: 
-                return '🟡'
-            else: 
-                return '🔴'
+            if pd.isna(dias): return '⚪'
+            if dias <= 0: return '⚪'
+            if dias <= 3: return '🟢'
+            elif dias <= 5: return '🟡'
+            else: return '🔴'
         
         df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
         
-        # 4. Formateo visual
-        df['Fecha_Visual'] = df['Fecha_Expediente'].dt.strftime('%d/%m/%Y')
+        # PASO 3: ELIMINAR columnas de cálculo para que no molesten
+        # Mostramos solo lo que viene del Excel + el Estado calculado
+        df_final = df.drop(columns=['Dias_Demora'])
         
-        # 5. Mostrar tabla
-        cols = ['Estado', 'Fecha_Visual', 'Fecha_Ingreso', 'Nro_Expediente', 'Solicitante', 'Responsable', 'Asunto']
-        st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, hide_index=True)
+        # Ordenamos las columnas para que el Estado sea lo primero
+        columnas_orden = ['Estado'] + [c for c in df_final.columns if c != 'Estado']
+        st.dataframe(df_final[columnas_orden], use_container_width=True, hide_index=True)
+        
     else:
-        st.warning("No hay datos cargados.")
+        st.warning("No hay datos.")
 except Exception as e:
-    st.error(f"Error al cargar la tabla: {e}")
+    st.error(f"Error: {e}")

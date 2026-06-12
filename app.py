@@ -57,27 +57,3 @@ with st.expander("➕ Cargar Nuevo Expediente"):
                 st.rerun()
             except Exception as e:
                 st.error(f"Error al guardar: {e}")
-
-# Visualización de Tabla
-try:
-    _, df = conectar_datos()
-    if not df.empty:
-        # Procesamiento de datos
-        df['Fecha_Ingreso'] = pd.to_datetime(df['Fecha_Ingreso'], dayfirst=True, errors='coerce')
-        df['Dias_Demora'] = (pd.Timestamp.now() - df['Fecha_Ingreso']).dt.days.abs()
-        
-        def get_semaforo(dias):
-            if pd.isna(dias): return '⚪'
-            if dias <= 3: return '🟢'
-            elif dias <= 5: return '🟡'
-            else: return '🔴'
-        
-        df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
-        columnas = ['Estado', 'Nro_Expediente', 'Asunto', 'Solicitante', 'Responsable', 'Dias_Demora']
-        
-        # Filtramos columnas existentes para evitar errores si falta alguna
-        st.dataframe(df[[c for c in columnas if c in df.columns]], use_container_width=True, hide_index=True)
-    else:
-        st.warning("La planilla está conectada pero no tiene datos.")
-except Exception as e:
-    st.error(f"Error al cargar datos: {e}")

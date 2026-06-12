@@ -78,4 +78,4 @@ try:
         # Mostramos solo columnas limpias
         cols = ['Estado', 'Fecha_Visual', 'Fecha_Ingreso', 'Nro_Expediente', 'Solicitante', 'Responsable', 'Asunto']
         st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, hide_index=True)
-    else
+    else:

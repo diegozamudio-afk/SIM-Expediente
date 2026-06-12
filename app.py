@@ -7,25 +7,25 @@ from google.oauth2.service_account import Credentials
 # Configuración de página
 st.set_page_config(page_title="ISAAC - Gaman", layout="wide")
 
-# 1. Función de Conexión (Autenticación oficial de Google)
+# 1. Función de Conexión (Método Profesional)
 @st.cache_data(ttl=60)
 def conectar_datos():
-    # Obtener secretos (configurados en Streamlit Cloud)
+    # Obtener los secretos configurados en Streamlit
     raw_secrets = dict(st.secrets["gcp_service_account"])
     
-    # Alcances necesarios
+    # Definir los alcances de la API
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
     
-    # Crear credenciales oficiales
+    # Crear credenciales oficiales de Google
     creds = Credentials.from_service_account_info(raw_secrets, scopes=scopes)
     
-    # Autorizar gspread usando las credenciales oficiales
+    # Autorizar el cliente directamente
     cliente = gspread.authorize(creds)
     
-    # Conexión al archivo
+    # Conectar con la hoja
     hoja = cliente.open("ISAAC - Expedientes").sheet1
     return hoja, pd.DataFrame(hoja.get_all_records())
 
@@ -43,11 +43,11 @@ with st.expander("➕ Cargar Nuevo Expediente"):
         
         if st.form_submit_button("Guardar Expediente"):
             try:
+                # Obtenemos la conexión y la hoja
                 hoja, _ = conectar_datos()
                 fecha_ingreso = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
-                # Insertar fila (Asegúrate que el orden coincida exactamente con tu Excel)
-                # Orden: [Fecha_Expediente, Fecha_Ingreso, Nro_Expediente, Solicitante, Estado, Responsable, Asunto]
+                # Fila: [Fecha_Expediente, Fecha_Ingreso, Nro_Expediente, Solicitante, Estado, Responsable, Asunto]
                 hoja.append_row([str(fecha_expediente), fecha_ingreso, nro_expediente, solicitante, "🟢", responsable, asunto])
                 
                 st.success("Expediente guardado con éxito")

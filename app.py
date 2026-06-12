@@ -4,9 +4,10 @@ import pandas as pd
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 
+# Configuración de página
 st.set_page_config(page_title="ISAAC - Gestión Gaman", layout="wide")
 
-# Función de conexión simplificada
+# --- FUNCIÓN DE CONEXIÓN (SIN CACHÉ PARA EVITAR ERRORES DE SESIÓN) ---
 def obtener_hoja():
     raw_secrets = dict(st.secrets["gcp_service_account"])
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -16,7 +17,7 @@ def obtener_hoja():
 
 st.title("🚦 ISAAC - Gestión de Expedientes")
 
-# Formulario de carga
+# --- FORMULARIO DE CARGA ---
 with st.expander("➕ Cargar Nuevo Expediente"):
     with st.form("form_carga", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -28,23 +29,40 @@ with st.expander("➕ Cargar Nuevo Expediente"):
         
         if st.form_submit_button("Guardar Expediente"):
             try:
-                # CONEXIÓN DENTRO DEL BOTÓN (Se abre y cierra al instante)
                 hoja = obtener_hoja()
                 fecha_ingreso = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
-                # Guardar
+                # Guardado directo (Orden: Fecha_Expediente, Fecha_Ingreso, Nro_Expediente, Solicitante, Estado, Responsable, Asunto)
                 hoja.append_row([str(fecha_expediente), fecha_ingreso, nro_expediente, solicitante, "🟢", responsable, asunto])
                 
-                st.success("Expediente guardado con éxito")
-                # No usar st.rerun() aquí si sigue fallando, probemos primero sin él
+                st.success("Expediente guardado correctamente.")
             except Exception as e:
-                st.error(f"Error técnico al guardar: {e}")
+                st.error(f"Error técnico: {e}")
 
-# Visualización (Conexión separada para leer)
+# --- VISUALIZACIÓN Y SEMÁFORO ---
 try:
     hoja = obtener_hoja()
-    df = pd.DataFrame(hoja.get_all_records())
-    if not df.empty:
-        st.dataframe(df, use_container_width=True, hide_index=True)
-except:
-    st.warning("No se pudieron cargar los datos.")
+    data = hoja.get_all_records()
+    if data:
+        df = pd.DataFrame(data)
+        
+        # Procesamiento para semáforo visual
+        df['Fecha_Expediente'] = pd.to_datetime(df['Fecha_Expediente'], dayfirst=True, errors='coerce')
+        hoy = pd.Timestamp.now().normalize()
+        df['Dias_Demora'] = (hoy - df['Fecha_Expediente'].dt.normalize()).dt.days
+        
+        def get_semaforo(dias):
+            if pd.isna(dias): return '⚪'
+            if dias <= 3: return '🟢'
+            elif dias <= 5: return '🟡'
+            else: return '🔴'
+        
+        df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
+        
+        # Mostrar tabla final
+        columnas = ['Estado', 'Fecha_Expediente', 'Fecha_Ingreso', 'Nro_Expediente', 'Solicitante', 'Responsable', 'Asunto']
+        st.dataframe(df[[c for c in columnas if c in df.columns]], use_container_width=True, hide_index=True)
+    else:
+        st.warning("No hay datos cargados.")
+except Exception as e:
+    st.error("Error al cargar la tabla.")

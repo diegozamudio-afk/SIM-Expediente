@@ -51,4 +51,19 @@ try:
         df['Dias_Demora'] = (hoy - df['Fecha_Expediente']).dt.days
         
         # Lógica del semáforo (Prioridad: Blanco para hoy)
-        def get
+        def get_semaforo(dias):
+            if pd.isna(dias): return '⚪'
+            if dias == 0: return '⚪'
+            if dias <= 3: return '🟢'
+            elif dias <= 5: return '🟡'
+            else: return '🔴'
+        
+        df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
+        
+        # Mostrar tabla ordenada
+        columnas = ['Estado', 'Fecha_Expediente', 'Fecha_Ingreso', 'Nro_Expediente', 'Solicitante', 'Responsable', 'Asunto']
+        st.dataframe(df[[c for c in columnas if c in df.columns]], use_container_width=True, hide_index=True)
+    else:
+        st.warning("No hay datos cargados.")
+except Exception as e:
+    st.error("Error al cargar la tabla.")

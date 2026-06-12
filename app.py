@@ -33,7 +33,7 @@ with st.expander("➕ Cargar Nuevo Expediente"):
                 fecha_ingreso = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
                 # Guardado directo (Orden: Fecha_Expediente, Fecha_Ingreso, Nro_Expediente, Solicitante, Estado, Responsable, Asunto)
-                hoja.append_row([str(fecha_expediente), fecha_ingreso, nro_expediente, solicitante, "🟢", responsable, asunto])
+                hoja.append_row([str(fecha_expediente), fecha_ingreso, nro_expediente, solicitante, "", responsable, asunto])
                 
                 st.success("Expediente guardado correctamente.")
             except Exception as e:

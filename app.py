@@ -5,22 +5,27 @@ from datetime import datetime
 from google.oauth2.service_account import Credentials
 
 # Configuración de página
-st.set_page_config(page_title="ISAAC - Gestión Gaman", layout="wide")
+st.set_page_config(page_title="ISAAC - Gaman", layout="wide")
 
-# 1. Función de Conexión (Autenticación Robusta)
+# 1. Función de Conexión (Autenticación oficial de Google)
 @st.cache_data(ttl=60)
 def conectar_datos():
+    # Obtener secretos (configurados en Streamlit Cloud)
     raw_secrets = dict(st.secrets["gcp_service_account"])
+    
+    # Alcances necesarios
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
     
-    # Credenciales oficiales
+    # Crear credenciales oficiales
     creds = Credentials.from_service_account_info(raw_secrets, scopes=scopes)
+    
+    # Autorizar gspread usando las credenciales oficiales
     cliente = gspread.authorize(creds)
     
-    # Abrir la hoja
+    # Conexión al archivo
     hoja = cliente.open("ISAAC - Expedientes").sheet1
     return hoja, pd.DataFrame(hoja.get_all_records())
 
@@ -32,7 +37,6 @@ with st.expander("➕ Cargar Nuevo Expediente"):
         col1, col2 = st.columns(2)
         fecha_expediente = col1.date_input("Fecha del Expediente", datetime.now())
         responsable = col2.selectbox("Responsable", ["Juan Pérez", "Ana García", "Diego Lopez", "Lucía Martínez"])
-        
         nro_expediente = st.text_input("Nro. de Expediente")
         solicitante = st.text_input("Solicitante")
         asunto = st.text_area("Asunto")
@@ -42,7 +46,8 @@ with st.expander("➕ Cargar Nuevo Expediente"):
                 hoja, _ = conectar_datos()
                 fecha_ingreso = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
-                # Fila: [Fecha_Expediente, Fecha_Ingreso, Nro_Expediente, Solicitante, Estado, Responsable, Asunto]
+                # Insertar fila (Asegúrate que el orden coincida exactamente con tu Excel)
+                # Orden: [Fecha_Expediente, Fecha_Ingreso, Nro_Expediente, Solicitante, Estado, Responsable, Asunto]
                 hoja.append_row([str(fecha_expediente), fecha_ingreso, nro_expediente, solicitante, "🟢", responsable, asunto])
                 
                 st.success("Expediente guardado con éxito")
@@ -50,7 +55,7 @@ with st.expander("➕ Cargar Nuevo Expediente"):
             except Exception as e:
                 st.error(f"Error al guardar: {e}")
 
-# Visualización y Semáforo
+# Visualización
 try:
     _, df = conectar_datos()
     if not df.empty:

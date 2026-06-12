@@ -57,13 +57,18 @@ try:
         hoy = pd.Timestamp.now().normalize()
         df['Dias_Demora'] = (hoy - df['Fecha_Expediente'].dt.normalize()).dt.days
         
-      # 4. Lógica semáforo
+     # 4. Lógica semáforo
         def get_semaforo(dias):
-            if pd.isna(dias): return '⚪'
-            if dias <= 0: return '⚪'
-            if dias <= 3: return '🟢'
-            elif dias <= 5: return '🟡'
-            else: return '🔴'  # <--- AQUÍ DEBEN IR LOS DOS PUNTOS
+            if pd.isna(dias): 
+                return '⚪'
+            if dias <= 0: 
+                return '⚪'
+            if dias <= 3: 
+                return '🟢'
+            elif dias <= 5: 
+                return '🟡'
+            else: 
+                return '🔴'  # <--- Asegúrate de que aquí existan los dos puntos
         
         df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
         

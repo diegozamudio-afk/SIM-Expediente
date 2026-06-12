@@ -8,7 +8,16 @@ st.set_page_config(page_title="ISAAC - Gestión de Expedientes", layout="wide")
 
 @st.cache_data(ttl=60)
 def conectar_datos():
-    credenciales_dict = json.loads(st.secrets["gcp_service_account"])
+    # 1. Accedemos a los secretos y lo convertimos a un dict común
+    secrets_dict = dict(st.secrets["gcp_service_account"])
+    
+    # 2. Convertimos el diccionario a un JSON string y luego lo cargamos
+    # Esto soluciona el problema de que sea un 'AttrDict'
+    credenciales_dict = json.loads(json.dumps(secrets_dict))
+    
+    # 3. Corregimos el salto de línea en la clave privada
+    credenciales_dict["private_key"] = credenciales_dict["private_key"].replace("\\n", "\n")
+    
     cliente = gspread.service_account_from_dict(credenciales_dict)
     hoja = cliente.open("ISAAC - Expedientes").sheet1
     return pd.DataFrame(hoja.get_all_records())

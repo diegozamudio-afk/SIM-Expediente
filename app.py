@@ -34,7 +34,7 @@ with st.expander("➕ Cargar Nuevo Expediente"):
                 
                 hoja.append_row([fecha_exp_str, fecha_ingreso, nro_expediente, solicitante, "Pendiente", responsable, asunto])
                 st.success("Expediente guardado correctamente.")
-            except Exception as e: # <--- AQUÍ FALTABAN LOS DOS PUNTOS
+            except Exception as e:
                 st.error(f"Error técnico: {e}")
 
 # --- VISUALIZACIÓN Y SEMÁFORO AUTOMÁTICO ---
@@ -57,11 +57,16 @@ try:
         
         # 3. Lógica semáforo
         def get_semaforo(dias):
-            if pd.isna(dias): return '⚪'
-            if dias <= 0: return '⚪'
-            if dias <= 3: return '🟢'
-            elif dias <= 5: return '🟡'
-            else: return '🔴'
+            if pd.isna(dias): 
+                return '⚪'
+            if dias <= 0: 
+                return '⚪'
+            if dias <= 3: 
+                return '🟢'
+            elif dias <= 5: 
+                return '🟡'
+            else: 
+                return '🔴'
         
         df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
         
@@ -73,5 +78,5 @@ try:
         st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, hide_index=True)
     else:
         st.warning("No hay datos cargados.")
-except Exception as e: # <--- AQUÍ TAMBIÉN FALTABAN
+except Exception as e:
     st.error(f"Error al cargar la tabla: {e}")

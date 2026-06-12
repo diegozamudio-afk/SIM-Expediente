@@ -4,9 +4,6 @@ import pandas as pd
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 
-st.set_page_config(page_title="ISAAC - Gestión Gaman", layout="wide")
-
-# --- CONEXIÓN BLINDADA ---
 def obtener_hoja():
     raw_secrets = dict(st.secrets["gcp_service_account"])
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -16,7 +13,7 @@ def obtener_hoja():
 
 st.title("🚦 ISAAC - Gestión de Expedientes")
 
-# --- FORMULARIO DE CARGA ---
+# Formulario
 with st.expander("➕ Cargar Nuevo Expediente"):
     with st.form("form_carga", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -29,41 +26,34 @@ with st.expander("➕ Cargar Nuevo Expediente"):
         if st.form_submit_button("Guardar Expediente"):
             try:
                 hoja = obtener_hoja()
+                # FORMATO FORZADO
+                fecha_exp_str = fecha_expediente.strftime("%d/%m/%Y")
                 fecha_ingreso = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
-                # GUARDAMOS "Pendiente" en lugar de un emoji fijo
-                hoja.append_row([str(fecha_expediente), fecha_ingreso, nro_expediente, solicitante, "Pendiente", responsable, asunto])
-                
-                st.success("Expediente guardado correctamente.")
+                hoja.append_row([fecha_exp_str, fecha_ingreso, nro_expediente, solicitante, "Pendiente", responsable, asunto])
+                st.success("Expediente guardado!")
             except Exception as e:
-                st.error(f"Error técnico: {e}")
+                st.error(f"Error: {e}")
 
-# --- VISUALIZACIÓN Y SEMÁFORO AUTOMÁTICO ---
+# Visualización
 try:
     hoja = obtener_hoja()
     data = hoja.get_all_records()
     if data:
         df = pd.DataFrame(data)
-        
-        # Procesamiento de fechas
+        # LECTURA FORZADA
         df['Fecha_Expediente'] = pd.to_datetime(df['Fecha_Expediente'], dayfirst=True, errors='coerce').dt.normalize()
         hoy = pd.Timestamp.now().normalize()
         df['Dias_Demora'] = (hoy - df['Fecha_Expediente']).dt.days
         
-        # Lógica del semáforo (Prioridad: Blanco para hoy)
         def get_semaforo(dias):
-            if pd.isna(dias): return '⚪'
+            if pd.isna(dias) or dias < 0: return '⚪'
             if dias == 0: return '⚪'
             if dias <= 3: return '🟢'
             elif dias <= 5: return '🟡'
             else: return '🔴'
         
         df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
-        
-        # Mostrar tabla ordenada
-        columnas = ['Estado', 'Fecha_Expediente', 'Fecha_Ingreso', 'Nro_Expediente', 'Solicitante', 'Responsable', 'Asunto']
-        st.dataframe(df[[c for c in columnas if c in df.columns]], use_container_width=True, hide_index=True)
-    else:
-        st.warning("No hay datos cargados.")
-except Exception as e:
-    st.error("Error al cargar la tabla.")
+        st.dataframe(df, use_container_width=True, hide_index=True)
+except:
+    st.warning("Sin datos.")

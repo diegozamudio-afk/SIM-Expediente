@@ -19,7 +19,7 @@ def conectar_datos():
     credenciales_dict["private_key"] = credenciales_dict["private_key"].replace("\\n", "\n")
     
     cliente = gspread.service_account_from_dict(credenciales_dict)
-    hoja = cliente.open("ISAAC - Expedientes").sheet1
+    hoja = cliente.open("ISAAC - Expedientes").hoja 1
     return pd.DataFrame(hoja.get_all_records())
 
 st.title("🚦 ISAAC - Gestión y Control de Expedientes")

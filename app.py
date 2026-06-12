@@ -4,10 +4,8 @@ import gspread
 import json
 from datetime import datetime
 
-# Configuración de página
-st.set_page_config(page_title="ISAAC - Expedientes", layout="wide")
+st.set_page_config(page_title="ISAAC - Gestión de Expedientes", layout="wide")
 
-# Conexión directa y simplificada
 @st.cache_data(ttl=60)
 def conectar_datos():
     credenciales_dict = json.loads(st.secrets["gcp_service_account"])
@@ -19,39 +17,35 @@ st.title("🚦 ISAAC - Gestión y Control de Expedientes")
 
 try:
     df = conectar_datos()
-    
     if not df.empty:
-        # Lógica de Semáforo
+        # Convertimos ambas fechas
+        df['Fecha_Expediente'] = pd.to_datetime(df['Fecha_Expediente'])
         df['Fecha_Ingreso'] = pd.to_datetime(df['Fecha_Ingreso'])
-        df['Dias_Antiguedad'] = (datetime.now() - df['Fecha_Ingreso']).dt.days
         
+        # Calculamos antigüedad respecto al ingreso actual para el semáforo
+        df['Dias_Demora'] = (datetime.now() - df['Fecha_Ingreso']).dt.days
+        
+        # Lógica de Semáforo
         def obtener_color(dias):
             if dias <= 3: return '🟢'
             elif dias <= 5: return '🟡'
             else: return '🔴'
         
-        df['Estado_Visual'] = df['Dias_Antiguedad'].apply(obtener_color)
+        df['Estado_Semaforo'] = df['Dias_Demora'].apply(obtener_color)
 
-        # KPIs
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Total Expedientes", len(df))
-        c2.metric("En Alerta (Rojo)", len(df[df['Dias_Antiguedad'] > 5]))
-        c3.metric("Al Día (Verde)", len(df[df['Dias_Antiguedad'] <= 3]))
+        # Alertas críticas
+        criticos = df[df['Dias_Demora'] > 5]
+        if not criticos.empty:
+            st.error(f"⚠️ ¡ATENCIÓN! {len(criticos)} expedientes críticos.")
+            st.warning("Revisar responsables de expedientes en ROJO.")
 
-        st.markdown("---")
-        
-        # Tabla Interactiva
-        st.subheader("📋 Detalle de Expedientes")
+        # Tabla con ambas fechas
+        st.subheader("📋 Detalle General")
         st.dataframe(
-            df[['Estado_Visual', 'Nro_Expediente', 'Solicitante', 'Estado', 'Dias_Antiguedad']],
-            use_container_width=True,
-            hide_index=True
+            df[['Estado_Semaforo', 'Nro_Expediente', 'Fecha_Expediente', 'Fecha_Ingreso', 'Dias_Demora', 'Responsable', 'Estado']],
+            use_container_width=True, hide_index=True
         )
     else:
-        st.warning("La planilla está vacía. Por favor, carga datos.")
-        
+        st.warning("La planilla está vacía.")
 except Exception as e:
     st.error(f"Error al conectar: {e}")
-
-if st.button("🔄 Actualizar Datos"):
-    st.rerun()

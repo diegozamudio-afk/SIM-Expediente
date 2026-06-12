@@ -4,6 +4,9 @@ import pandas as pd
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 
+st.set_page_config(page_title="ISAAC - Gestión Gaman", layout="wide")
+
+# --- CONEXIÓN BLINDADA ---
 def obtener_hoja():
     raw_secrets = dict(st.secrets["gcp_service_account"])
     scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -13,7 +16,7 @@ def obtener_hoja():
 
 st.title("🚦 ISAAC - Gestión de Expedientes")
 
-# Formulario
+# --- FORMULARIO DE CARGA ---
 with st.expander("➕ Cargar Nuevo Expediente"):
     with st.form("form_carga", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -26,34 +29,48 @@ with st.expander("➕ Cargar Nuevo Expediente"):
         if st.form_submit_button("Guardar Expediente"):
             try:
                 hoja = obtener_hoja()
-                # FORMATO FORZADO
+                # Convertimos a string DD/MM/AAAA para asegurar consistencia
                 fecha_exp_str = fecha_expediente.strftime("%d/%m/%Y")
                 fecha_ingreso = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
                 hoja.append_row([fecha_exp_str, fecha_ingreso, nro_expediente, solicitante, "Pendiente", responsable, asunto])
-                st.success("Expediente guardado!")
+                st.success("Expediente guardado correctamente.")
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error técnico: {e}")
 
-# Visualización
+# --- VISUALIZACIÓN Y SEMÁFORO AUTOMÁTICO ---
 try:
     hoja = obtener_hoja()
     data = hoja.get_all_records()
     if data:
         df = pd.DataFrame(data)
-        # LECTURA FORZADA
-        df['Fecha_Expediente'] = pd.to_datetime(df['Fecha_Expediente'], dayfirst=True, errors='coerce').dt.normalize()
-        hoy = pd.Timestamp.now().normalize()
-        df['Dias_Demora'] = (hoy - df['Fecha_Expediente']).dt.days
         
+        # 1. Limpieza radical: convertimos todo a string y luego a fecha
+        df['Fecha_Expediente'] = pd.to_datetime(df['Fecha_Expediente'].astype(str).str.strip(), dayfirst=True, errors='coerce')
+        
+        # 2. Si falló la primera, probamos formato YYYY-MM-DD
+        mask = df['Fecha_Expediente'].isna()
+        if mask.any():
+            df.loc[mask, 'Fecha_Expediente'] = pd.to_datetime(df.loc[mask, 'Fecha_Expediente'].astype(str), errors='coerce')
+
+        # 3. Cálculo de días
+        hoy = pd.Timestamp.now().normalize()
+        df['Dias_Demora'] = (hoy - df['Fecha_Expediente'].dt.normalize()).dt.days
+        
+        # 4. Lógica semáforo
         def get_semaforo(dias):
-            if pd.isna(dias) or dias < 0: return '⚪'
-            if dias == 0: return '⚪'
+            if pd.isna(dias): return '⚪'
+            if dias <= 0: return '⚪'
             if dias <= 3: return '🟢'
             elif dias <= 5: return '🟡'
             else: return '🔴'
         
         df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
-        st.dataframe(df, use_container_width=True, hide_index=True)
-except:
-    st.warning("Sin datos.")
+        
+        # 5. Formateo visual para el usuario
+        df['Fecha_Visual'] = df['Fecha_Expediente'].dt.strftime('%d/%m/%Y')
+        
+        # Mostramos solo columnas limpias
+        cols = ['Estado', 'Fecha_Visual', 'Fecha_Ingreso', 'Nro_Expediente', 'Solicitante', 'Responsable', 'Asunto']
+        st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, hide_index=True)
+    else

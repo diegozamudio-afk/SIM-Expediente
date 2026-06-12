@@ -4,30 +4,15 @@ import pandas as pd
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 
-# Configuración de página
-st.set_page_config(page_title="ISAAC - Gaman", layout="wide")
+st.set_page_config(page_title="ISAAC - Gestión Gaman", layout="wide")
 
-# 1. Función de Conexión (Método Profesional)
-@st.cache_data(ttl=60)
-def conectar_datos():
-    # Obtener los secretos configurados en Streamlit
+# Función de conexión simplificada
+def obtener_hoja():
     raw_secrets = dict(st.secrets["gcp_service_account"])
-    
-    # Definir los alcances de la API
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    
-    # Crear credenciales oficiales de Google
+    scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(raw_secrets, scopes=scopes)
-    
-    # Autorizar el cliente directamente
     cliente = gspread.authorize(creds)
-    
-    # Conectar con la hoja
-    hoja = cliente.open("ISAAC - Expedientes").sheet1
-    return hoja, pd.DataFrame(hoja.get_all_records())
+    return cliente.open("ISAAC - Expedientes").sheet1
 
 st.title("🚦 ISAAC - Gestión de Expedientes")
 
@@ -43,30 +28,23 @@ with st.expander("➕ Cargar Nuevo Expediente"):
         
         if st.form_submit_button("Guardar Expediente"):
             try:
-                # Obtenemos la conexión y la hoja
-                hoja, _ = conectar_datos()
+                # CONEXIÓN DENTRO DEL BOTÓN (Se abre y cierra al instante)
+                hoja = obtener_hoja()
                 fecha_ingreso = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
-                # Fila: [Fecha_Expediente, Fecha_Ingreso, Nro_Expediente, Solicitante, Estado, Responsable, Asunto]
+                # Guardar
                 hoja.append_row([str(fecha_expediente), fecha_ingreso, nro_expediente, solicitante, "🟢", responsable, asunto])
                 
                 st.success("Expediente guardado con éxito")
-                st.rerun()
+                # No usar st.rerun() aquí si sigue fallando, probemos primero sin él
             except Exception as e:
-                st.error(f"Error al guardar: {e}")
+                st.error(f"Error técnico al guardar: {e}")
 
-# Visualización
+# Visualización (Conexión separada para leer)
 try:
-    _, df = conectar_datos()
+    hoja = obtener_hoja()
+    df = pd.DataFrame(hoja.get_all_records())
     if not df.empty:
-        # Procesamiento para semáforo visual
-        df['Fecha_Expediente'] = pd.to_datetime(df['Fecha_Expediente'], errors='coerce')
-        df['Dias'] = (pd.Timestamp.now() - df['Fecha_Expediente']).dt.days.abs()
-        df['Estado'] = df['Dias'].apply(lambda d: '🔴' if d > 5 else ('🟡' if d > 3 else '🟢'))
-        
-        st.dataframe(df[['Estado', 'Fecha_Expediente', 'Fecha_Ingreso', 'Nro_Expediente', 'Solicitante', 'Responsable', 'Asunto']], 
-                     use_container_width=True, hide_index=True)
-    else:
-        st.warning("No hay datos cargados en la hoja de cálculo.")
-except Exception as e:
-    st.error(f"Error al cargar datos: {e}")
+        st.dataframe(df, use_container_width=True, hide_index=True)
+except:
+    st.warning("No se pudieron cargar los datos.")

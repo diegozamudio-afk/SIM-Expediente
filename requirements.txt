@@ -1,7 +1,4 @@
 streamlit
+gspread
 pandas
-gspread>=6.0.0
-google-auth>=2.20.0
-plotly
-streamlit-geolocation
 google-auth

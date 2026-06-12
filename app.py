@@ -29,7 +29,6 @@ with st.expander("➕ Cargar Nuevo Expediente"):
         if st.form_submit_button("Guardar Expediente"):
             try:
                 hoja = obtener_hoja()
-                # Convertimos a string DD/MM/AAAA para asegurar consistencia
                 fecha_exp_str = fecha_expediente.strftime("%d/%m/%Y")
                 fecha_ingreso = datetime.now().strftime("%d/%m/%Y %H:%M")
                 
@@ -45,37 +44,33 @@ try:
     if data:
         df = pd.DataFrame(data)
         
-        # 1. Limpieza radical: convertimos todo a string y luego a fecha
+        # 1. Limpieza de fechas
         df['Fecha_Expediente'] = pd.to_datetime(df['Fecha_Expediente'].astype(str).str.strip(), dayfirst=True, errors='coerce')
         
-        # 2. Si falló la primera, probamos formato YYYY-MM-DD
         mask = df['Fecha_Expediente'].isna()
         if mask.any():
             df.loc[mask, 'Fecha_Expediente'] = pd.to_datetime(df.loc[mask, 'Fecha_Expediente'].astype(str), errors='coerce')
 
-        # 3. Cálculo de días
+        # 2. Cálculo de días
         hoy = pd.Timestamp.now().normalize()
         df['Dias_Demora'] = (hoy - df['Fecha_Expediente'].dt.normalize()).dt.days
         
-     # 4. Lógica semáforo
+        # 3. Lógica semáforo (Indentación corregida)
         def get_semaforo(dias):
-            if pd.isna(dias): 
-                return '⚪'
-            if dias <= 0: 
-                return '⚪'
-            if dias <= 3: 
-                return '🟢'
-            elif dias <= 5: 
-                return '🟡'
-            else: 
-                return '🔴'  # <--- Asegúrate de que aquí existan los dos puntos
+            if pd.isna(dias): return '⚪'
+            if dias <= 0: return '⚪'
+            if dias <= 3: return '🟢'
+            elif dias <= 5: return '🟡'
+            else: return '🔴'
         
         df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
         
-        # 5. Formateo visual para el usuario
+        # 4. Formateo visual
         df['Fecha_Visual'] = df['Fecha_Expediente'].dt.strftime('%d/%m/%Y')
         
-        # Mostramos solo columnas limpias
+        # 5. Mostrar tabla
         cols = ['Estado', 'Fecha_Visual', 'Fecha_Ingreso', 'Nro_Expediente', 'Solicitante', 'Responsable', 'Asunto']
         st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, hide_index=True)
     else:
+        st.warning("No hay datos cargados.")
+except Exception as e

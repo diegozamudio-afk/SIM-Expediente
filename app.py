@@ -51,11 +51,17 @@ try:
         hoy = pd.Timestamp.now().normalize()
         df['Dias_Demora'] = (hoy - df['Fecha_Expediente'].dt.normalize()).dt.days
         
-        def get_semaforo(dias):
-            if pd.isna(dias): return '⚪'
-            if dias <= 3: return '🟢'
-            elif dias <= 5: return '🟡'
-            else: return '🔴'
+       def get_semaforo(dias):
+    if pd.isna(dias): 
+        return '⚪'
+    if dias == 0: 
+        return '⚪'        # <--- Hoy es blanco
+    if dias <= 3: 
+        return '🟢'        # <--- 1, 2, 3 días es verde
+    elif dias <= 5: 
+        return '🟡'        # <--- 4, 5 días es amarillo
+    else: 
+        return '🔴'        # <--- Más de 5 días es rojo
         
         df['Estado'] = df['Dias_Demora'].apply(get_semaforo)
         
